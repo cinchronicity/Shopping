@@ -8,6 +8,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 // import the screens
 import ShoppingLists from "./components/ShoppingLists";
+import Welcome from "./components/Welcome";
 
 // Create the navigator
 const Stack = createNativeStackNavigator();
@@ -31,11 +32,12 @@ const App = () => {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="ShoppingLists">
+      <Stack.Navigator initialRouteName="Welcome">
+      <Stack.Screen name="Welcome" component = {Welcome}/>
         <Stack.Screen name="ShoppingLists">
           {/* Pass the db variable to the ShoppingLists component via reacts "passing addiitonal props docs"*/}
           {(props) => <ShoppingLists db={db} {...props} />}
-        </Stack.Screen>
+      </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
   );

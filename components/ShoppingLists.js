@@ -10,7 +10,7 @@ import {
   Alert
 } from "react-native";
 import { useState, useEffect } from "react";
-import { collection, getDocs, addDoc, } from "firebase/firestore";
+import { collection, getDocs, addDoc, onSnapshot, query, where } from "firebase/firestore";
 
 {
   /* useEffect() is a hook that allows you to perform side effects in your function components. 
@@ -23,24 +23,19 @@ import { collection, getDocs, addDoc, } from "firebase/firestore";
   In this case, the effect will run only when the lists variable changes.*/
 }
 
-const ShoppingLists = ({ db }) => {
+const ShoppingLists = ({ db , route }) => {
+
   {
     /* Extract the db variable to the ShoppingLists component */
   }
+  // userID will be used in the future to filter shopping lists based on the user who created them.
+  const { userID } = route.params;
+
   const [lists, setLists] = useState([]);
   //these three states are for the 3 TextInput fields
   const [listName, setListName] = useState("");
   const [item1, setItem1] = useState("");
   const [item2, setItem2] = useState("");
-
-  const fetchShoppingLists = async () => {
-    const listsDocuments = await getDocs(collection(db, "shoppinglists"));
-    let newLists = [];
-    listsDocuments.forEach((docObject) => {
-      newLists.push({ id: docObject.id, ...docObject.data() });
-    });
-    setLists(newLists);
-  };
 
   // When a new shopping list is added to Firestore, newListRef will contain a reference to the newly created document.
   // If the write operation is successful, newListRef.id will be a truthy value, allowing us to confirm success.
@@ -57,10 +52,30 @@ const ShoppingLists = ({ db }) => {
     }
   };
 
-  //calling the async/await function inside useEffect like so to avoid putting async fn into the callback fn of useEffect
-  useEffect(() => {
-    fetchShoppingLists();
-  }, [`${lists}`]); //compares the list after ${lists} is converted to a string to see if it has changed
+// This useEffect hook sets up a real-time listener on the "shoppinglists" collection in Firestore.
+// The onSnapshot function listens for changes and updates the state whenever documents are added, modified, or removed.
+// It iterates through the snapshot, extracts document data along with the document ID, and updates the state with the new list of shopping lists.
+// This ensures the UI always displays the latest data from Firestore.
+
+// Cleanup: The function returned at the end unsubscribes from the Firestore listener when the component unmounts.
+// This prevents memory leaks and unnecessary database connections.
+
+useEffect(() => {
+  const q = query(collection(db, "shoppinglists"), where("uid", "==", userID));
+  const unsubShoppinglists = onSnapshot(q, (documentsSnapshot => {
+    let newLists = [];
+    documentsSnapshot.forEach(doc => {
+      newLists.push({ id: doc.id, ...doc.data() })
+    });
+    setLists(newLists);
+  
+  }));
+
+  // Clean up code - code to execute when the component unmounts
+  return () => {
+    if (unsubShoppinglists) unsubShoppinglists();
+  }
+}, []);
 
   return (
     <View style={styles.container}>
@@ -102,6 +117,7 @@ const ShoppingLists = ({ db }) => {
               /*creates new object out of the 3 states, then calls addShoppingList fn*/
             }
             const newList = {
+              uid: userID,
               name: listName,
               items: [item1, item2],
             };
