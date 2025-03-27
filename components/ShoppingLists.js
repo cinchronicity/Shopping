@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useState, useEffect } from "react";
 import { collection, getDocs, addDoc, onSnapshot, query, where } from "firebase/firestore";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 {
   /* useEffect() is a hook that allows you to perform side effects in your function components. 
@@ -62,20 +63,26 @@ const ShoppingLists = ({ db , route }) => {
 
 useEffect(() => {
   const q = query(collection(db, "shoppinglists"), where("uid", "==", userID));
-  const unsubShoppinglists = onSnapshot(q, (documentsSnapshot => {
+  const unsubShoppinglists = onSnapshot(q, async (documentsSnapshot) => {
     let newLists = [];
     documentsSnapshot.forEach(doc => {
       newLists.push({ id: doc.id, ...doc.data() })
     });
+    //safety measure to prevent app from crashing if AsyncStorage fails to store the data 
+    try { 
+      await AsyncStorage.setItem('shopping_lists', JSON.stringify(newLists));
+    } catch (error) {
+      console.log(error.message);
+    }
     setLists(newLists);
-  
-  }));
+  });
 
-  // Clean up code - code to execute when the component unmounts
+  // Clean up code
   return () => {
     if (unsubShoppinglists) unsubShoppinglists();
   }
 }, []);
+
 
   return (
     <View style={styles.container}>
