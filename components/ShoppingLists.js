@@ -6,11 +6,18 @@ import {
   TextInput,
   KeyboardAvoidingView,
   TouchableOpacity,
-  Platform, 
-  Alert
+  Platform,
+  Alert,
 } from "react-native";
 import { useState, useEffect } from "react";
-import { collection, getDocs, addDoc, onSnapshot, query, where } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 {
@@ -24,8 +31,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
   In this case, the effect will run only when the lists variable changes.*/
 }
 
-const ShoppingLists = ({ db , route }) => {
-
+const ShoppingLists = ({ db, route, isConnected }) => {
   {
     /* Extract the db variable to the ShoppingLists component */
   }
@@ -53,36 +59,60 @@ const ShoppingLists = ({ db , route }) => {
     }
   };
 
-// This useEffect hook sets up a real-time listener on the "shoppinglists" collection in Firestore.
-// The onSnapshot function listens for changes and updates the state whenever documents are added, modified, or removed.
-// It iterates through the snapshot, extracts document data along with the document ID, and updates the state with the new list of shopping lists.
-// This ensures the UI always displays the latest data from Firestore.
+  // This useEffect hook sets up a real-time listener on the "shoppinglists" collection in Firestore.
+  // The onSnapshot function listens for changes and updates the state whenever documents are added, modified, or removed.
+  // It iterates through the snapshot, extracts document data along with the document ID, and updates the state with the new list of shopping lists.
+  // This ensures the UI always displays the latest data from Firestore.
 
-// Cleanup: The function returned at the end unsubscribes from the Firestore listener when the component unmounts.
-// This prevents memory leaks and unnecessary database connections.
+  // Cleanup: The function returned at the end unsubscribes from the Firestore listener when the component unmounts.
+  // This prevents memory leaks and unnecessary database connections.
+  let unsubShoppinglists;
+// declare unsubShoppinglists outside of useEffect() so you can unsub and disable the onSnapshot() listener before you lose the reference to it.
+  useEffect(() => {
+    if (isConnected === true) {
+      // unregister current onSnapshot() listener to avoid registering multiple listeners when
+      // useEffect code is re-executed.
+      if (unsubShoppinglists) unsubShoppinglists();
+      unsubShoppinglists = null;
 
-useEffect(() => {
-  const q = query(collection(db, "shoppinglists"), where("uid", "==", userID));
-  const unsubShoppinglists = onSnapshot(q, async (documentsSnapshot) => {
-    let newLists = [];
-    documentsSnapshot.forEach(doc => {
-      newLists.push({ id: doc.id, ...doc.data() })
-    });
-    //safety measure to prevent app from crashing if AsyncStorage fails to store the data 
-    try { 
-      await AsyncStorage.setItem('shopping_lists', JSON.stringify(newLists));
+      const q = query(
+        collection(db, "shoppinglists"),
+        where("uid", "==", userID)
+      );
+      unsubShoppinglists = onSnapshot(q, (documentsSnapshot) => {
+        let newLists = [];
+        documentsSnapshot.forEach((doc) => {
+          newLists.push({ id: doc.id, ...doc.data() });
+        });
+        cacheShoppingLists(newLists);
+        setLists(newLists);
+      });
+    } else loadCachedLists();
+
+    // Clean up code
+    return () => {
+      if (unsubShoppinglists) unsubShoppinglists();
+    };
+  }, [isConnected]);
+  // useEffect() will run when the component mounts and whenever the isConnected variable changes.
+
+  const loadCachedLists = async () => {
+    const cachedLists = (await AsyncStorage.getItem("shopping_lists")) || [];
+    setLists(JSON.parse(cachedLists));
+  };
+
+  // This function caches the shopping lists in AsyncStorage.
+  // It converts the array of shopping lists into a JSON string and stores it in the "shopping_lists" key.
+  const cacheShoppingLists = async (listsToCache) => {
+    try {
+      await AsyncStorage.setItem(
+        "shopping_lists",
+        JSON.stringify(listsToCache)
+      );
     } catch (error) {
       console.log(error.message);
     }
-    setLists(newLists);
-  });
-
-  // Clean up code
-  return () => {
-    if (unsubShoppinglists) unsubShoppinglists();
-  }
-}, []);
-
+  };
 
   return (
     <View style={styles.container}>
@@ -98,48 +128,52 @@ useEffect(() => {
           </View>
         )}
       />
-      <View style={styles.listForm}>
-        <TextInput
-          style={styles.listName}
-          placeholder="List Name"
-          value={listName}
-          onChangeText={setListName}
-        />
-        <TextInput
-          style={styles.item}
-          placeholder="Item #1"
-          value={item1}
-          onChangeText={setItem1}
-        />
-        <TextInput
-          style={styles.item}
-          placeholder="Item #2"
-          value={item2}
-          onChangeText={setItem2}
-        />
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => {
-            {
-              /*creates new object out of the 3 states, then calls addShoppingList fn*/
-            }
-            const newList = {
-              uid: userID,
-              name: listName,
-              items: [item1, item2],
-            };
-            addShoppingList(newList);
-            {
-              /*clears the 3 states after the new list is added*/
-            }
-            setListName("");
-            setItem1("");
-            setItem2("");
-          }}
-        >
-          <Text style={styles.addButtonText}>Add</Text>
-        </TouchableOpacity>
-      </View>
+      {/* if isConnected is true, render the form to add a new shopping list */}
+      {isConnected === true ? (
+        <View style={styles.listForm}>
+          <TextInput
+            style={styles.listName}
+            placeholder="List Name"
+            value={listName}
+            onChangeText={setListName}
+          />
+          <TextInput
+            style={styles.item}
+            placeholder="Item #1"
+            value={item1}
+            onChangeText={setItem1}
+          />
+          <TextInput
+            style={styles.item}
+            placeholder="Item #2"
+            value={item2}
+            onChangeText={setItem2}
+          />
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => {
+              {
+                /*creates new object out of the 3 states, then calls addShoppingList fn*/
+              }
+              const newList = {
+                uid: userID,
+                name: listName,
+                items: [item1, item2],
+              };
+              addShoppingList(newList);
+              {
+                /*clears the 3 states after the new list is added*/
+              }
+              setListName("");
+              setItem1("");
+              setItem2("");
+            }}
+          >
+            <Text style={styles.addButtonText}>Add</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null} 
+      {/* if isConnected is false, do not render add button */}
       {Platform.OS === "ios" ? (
         <KeyboardAvoidingView behavior="padding" />
       ) : null}
