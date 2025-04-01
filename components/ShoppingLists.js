@@ -67,7 +67,7 @@ const ShoppingLists = ({ db, route, isConnected }) => {
   // Cleanup: The function returned at the end unsubscribes from the Firestore listener when the component unmounts.
   // This prevents memory leaks and unnecessary database connections.
   let unsubShoppinglists;
-// declare unsubShoppinglists outside of useEffect() so you can unsub and disable the onSnapshot() listener before you lose the reference to it.
+  // declare unsubShoppinglists outside of useEffect() so you can unsub and disable the onSnapshot() listener before you lose the reference to it.
   useEffect(() => {
     if (isConnected === true) {
       // unregister current onSnapshot() listener to avoid registering multiple listeners when
@@ -172,7 +172,7 @@ const ShoppingLists = ({ db, route, isConnected }) => {
             <Text style={styles.addButtonText}>Add</Text>
           </TouchableOpacity>
         </View>
-      ) : null} 
+      ) : null}
       {/* if isConnected is false, do not render add button */}
       {Platform.OS === "ios" ? (
         <KeyboardAvoidingView behavior="padding" />

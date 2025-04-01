@@ -59,7 +59,7 @@ const App = () => {
         <Stack.Screen name="Welcome" component={Welcome} />
         <Stack.Screen name="ShoppingLists">
           {/* Pass the db variable to the ShoppingLists component via reacts "passing addiitonal props docs"*/}
-          {/*The isConnected prop is passed to the ShoppingLists component to enable conditional rendering based on the connection status. */ }
+          {/*The isConnected prop is passed to the ShoppingLists component to enable conditional rendering based on the connection status. */}
           {(props) => (
             <ShoppingLists
               isConnected={connectionStatus.isConnected}
